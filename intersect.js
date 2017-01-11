@@ -43,8 +43,13 @@ class Vec3d {
     return Math.sqrt( x_2 + y_2 + z_2 );
   }
 
-  magnitude(){
+  magnitude() {
     return Math.sqrt( this.x*this.x + this.y*this.y + this.z*this.z );
+  }
+
+  unit() {
+    let m = this.magnitude();
+    return new Vec3d(this.x/m, this.y/m, this.z/m)
   }
 }
 
@@ -84,6 +89,17 @@ class Triangle {
     out.y = ray.point.y + t * ray.direction.y;
     out.z = ray.point.z + t * ray.direction.z;
     return out;
+  }
+
+  normal() {
+    let edge1 = Vec3d.subtract(this.p2, this.p1);
+    let edge2 = Vec3d.subtract(this.p3, this.p1);
+
+    return Vec3d.cross(edge1, edge2)
+  }
+
+  unitNormal(){
+    return this.normal().unit();
   }
 }
 
