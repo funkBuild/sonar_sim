@@ -1,10 +1,6 @@
-var EPSILON = 0.000001;
-//var edge1 = [0,0,0];
-//var edge2 = [0,0,0];
-//var tvec = [0,0,0];
-//var pvec = [0,0,0];
-//var qvec = [0,0,0];
 
+const SPEED_OF_SOUND = 1500.0;
+const EPSILON = 0.000001;
 
 class Vec3d {
   constructor(x, y, z) {
@@ -46,6 +42,10 @@ class Vec3d {
     
     return Math.sqrt( x_2 + y_2 + z_2 );
   }
+
+  magnitude(){
+    return Math.sqrt( this.x*this.x + this.y*this.y + this.z*this.z );
+  }
 }
 
 class Ray {
@@ -70,10 +70,6 @@ class Triangle {
     
     let pvec = Vec3d.cross(ray.direction, edge2);
     let det = Vec3d.dot(edge1, pvec);
-    
-    console.dir(edge1);
-    console.dir(edge2);
-    console.dir(det);
     
     if (det < EPSILON) return null;
     let tvec = Vec3d.subtract(ray.point, this.p1);
@@ -104,8 +100,8 @@ class Mesh {
     // Return the first collision only
     for( let x=0; x < this.triangles.length; x++){
       let colPoint = this.triangles[x].rayIntersect(ray)
-      console.dir( colPoint );
-      if(!isNaN(colPoint)) return colPoint;
+
+      if(colPoint) return colPoint;
     }
     return;
   }
@@ -115,6 +111,7 @@ class Transducer {
   constructor(point, direction) {
     this.point = point
     this.direction = direction
+    this.returnedSignals = [];
   }
   
   castRays() {
@@ -122,6 +119,34 @@ class Transducer {
     // Give each an intensity based on the beam profile
     return [ new Ray(this.point, this.direction) ]
   }
+
+  addReturnSignal(time, magnitude) {
+    this.returnedSignals.push({time: time, magnitude: magnitude})
+  }
+}
+
+function attenuationFactor(distance){
+  return  Math.pow(10, (distance * -0.1)/10); // 100db/km at 200khz = 0.1db/m
+}
+
+function doRayCalc(ray) {
+  let collisionPoint = mesh.getCollision( ray )
+  
+  console.dir(collisionPoint);
+  if(!collisionPoint) return;
+
+  let distance = collisionPoint.magnitude()
+  transducers.forEach(transducer => {
+    let returnDistance = Vec3d.subtract(collisionPoint, transducer.point).magnitude();
+    let time = (distance + returnDistance) / SPEED_OF_SOUND;
+
+    let magnitude = 1 * attenuationFactor(returnDistance)
+
+    console.log(returnDistance);
+    console.log(magnitude);
+
+    transducer.addReturnSignal(time, magnitude);
+  });
 }
 
 
@@ -134,15 +159,20 @@ mesh.addTriangle( new Triangle(new Vec3d(10,-10,0), new Vec3d(10,10,0), new Vec3
 
 // Load transducers in a pattern
 transducers.push( new Transducer(new Vec3d(0,0,0), new Vec3d(1,0,0)) );
+transducers.push( new Transducer(new Vec3d(0,1,0), new Vec3d(0,0,1)) );
 
 transducers.forEach(transducer => {
   let rays = transducer.castRays();
   
-  rays.forEach(ray => {
-    let collisionPoint = mesh.getCollision( ray )
-    console.dir( collisionPoint )
-  });
+  rays.forEach(doRayCalc);
 });
+
+
+transducers.forEach(transducer => {
+  console.dir( transducer.returnedSignals );
+});
+
+
 
 
 
